@@ -9,6 +9,7 @@ import {
   type ScheduleItem,
   type StickyNote,
 } from "@/lib/planner-types";
+import type { WeatherSelection, WeatherSnapshot } from "@/lib/weather-types";
 
 type PlannerView = "list" | "edit";
 type EditTab = "place" | "schedule";
@@ -24,6 +25,8 @@ type PersistedSlice = {
   editTab: EditTab;
   quickNotes: StickyNote[];
   prefectureMemos: Record<string, string>;
+  weatherSelection: WeatherSelection;
+  weatherSnapshot: WeatherSnapshot | null;
 };
 
 type PlannerState = PersistedSlice & {
@@ -60,6 +63,10 @@ type PlannerState = PersistedSlice & {
   updateQuickNote: (id: string, text: string) => void;
   removeQuickNote: (id: string) => void;
   setPrefectureMemo: (id: string, text: string) => void;
+  setWeatherPrefecture: (id: string | null) => void;
+  setWeatherCity: (id: string | null) => void;
+  setWeatherDates: (patch: Partial<Pick<WeatherSelection, "startDate" | "nights">>) => void;
+  setWeatherSnapshot: (snapshot: WeatherSnapshot | null) => void;
 };
 
 function ensureScheduleDays(plan: DetailedPlan, days: number): Record<string, ScheduleItem[]> {
@@ -91,6 +98,13 @@ export const usePlannerStore = create<PlannerState>()(
       editTab: "place",
       quickNotes: [],
       prefectureMemos: {},
+      weatherSelection: {
+        prefectureId: null,
+        cityId: null,
+        startDate: "",
+        nights: 3,
+      },
+      weatherSnapshot: null,
       modalOpen: false,
       placePickMode: null,
       pendingPlace: null,
@@ -370,6 +384,34 @@ export const usePlannerStore = create<PlannerState>()(
             [id]: text,
           },
         }),
+
+      setWeatherPrefecture: (id) =>
+        set({
+          weatherSelection: {
+            ...get().weatherSelection,
+            prefectureId: id,
+            cityId: null,
+          },
+          weatherSnapshot: null,
+        }),
+
+      setWeatherCity: (id) =>
+        set({
+          weatherSelection: {
+            ...get().weatherSelection,
+            cityId: id,
+          },
+        }),
+
+      setWeatherDates: (patch) =>
+        set({
+          weatherSelection: {
+            ...get().weatherSelection,
+            ...patch,
+          },
+        }),
+
+      setWeatherSnapshot: (snapshot) => set({ weatherSnapshot: snapshot }),
     }),
     {
       name: "japan-travel-planner",
@@ -381,6 +423,8 @@ export const usePlannerStore = create<PlannerState>()(
         editTab: state.editTab,
         quickNotes: state.quickNotes,
         prefectureMemos: state.prefectureMemos,
+        weatherSelection: state.weatherSelection,
+        weatherSnapshot: state.weatherSnapshot,
       }),
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<PersistedSlice>;
@@ -392,6 +436,8 @@ export const usePlannerStore = create<PlannerState>()(
           editTab: saved.editTab ?? current.editTab,
           quickNotes: saved.quickNotes ?? current.quickNotes,
           prefectureMemos: saved.prefectureMemos ?? current.prefectureMemos,
+          weatherSelection: saved.weatherSelection ?? current.weatherSelection,
+          weatherSnapshot: saved.weatherSnapshot ?? current.weatherSnapshot,
         };
       },
       onRehydrateStorage: () => (state) => {
